@@ -65,7 +65,7 @@ const CategoriesList = ({ categories }: CategoriesListProps) => {
                 animationFillMode: 'both'
               }}
             >
-              <CategoryItem category={category} />
+              <CategoryItem category={category} index={index} />
             </div>
           ))}
         </div>

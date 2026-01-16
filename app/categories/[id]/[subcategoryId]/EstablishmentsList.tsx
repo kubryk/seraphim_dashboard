@@ -68,7 +68,7 @@ const EstablishmentsList = ({ establishments }: EstablishmentsListProps) => {
                 animationFillMode: 'both'
               }}
             >
-              <EstablishmentItem establishment={establishment} />
+              <EstablishmentItem establishment={establishment} index={index} />
             </div>
           ))}
         </div>

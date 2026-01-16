@@ -65,7 +65,7 @@ const SubcategoriesList = ({ subcategories }: SubcategoriesListProps) => {
                 animationFillMode: 'both'
               }}
             >
-              <SubcategoryItem subcategory={subcategory} />
+              <SubcategoryItem subcategory={subcategory} index={index} />
             </div>
           ))}
         </div>

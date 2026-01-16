@@ -28,6 +28,7 @@ type Establishment = {
 
 type EstablishmentItemProps = {
   establishment: Establishment;
+  index: number;
 };
 
 const validateEdrpou = (code: string): string | null => {
@@ -44,7 +45,7 @@ const validateEdrpou = (code: string): string | null => {
   return null;
 };
 
-const EstablishmentItem = ({ establishment }: EstablishmentItemProps) => {
+const EstablishmentItem = ({ establishment, index }: EstablishmentItemProps) => {
   const router = useRouter();
   const [isEditing, setIsEditing] = useState(false);
   const [name, setName] = useState(establishment.name);
@@ -187,6 +188,11 @@ const EstablishmentItem = ({ establishment }: EstablishmentItemProps) => {
             </div>
           ) : (
             <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2 shrink-0">
+                <span className="text-sm font-semibold text-muted-foreground min-w-[24px]">
+                  {index + 1}.
+                </span>
+              </div>
               <div className="flex-1 min-w-0">
                 <h3 className="text-base font-semibold truncate mb-1.5">
                   {establishment.name}

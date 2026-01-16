@@ -29,9 +29,10 @@ type Subcategory = {
 
 type SubcategoryItemProps = {
   subcategory: Subcategory;
+  index: number;
 };
 
-const SubcategoryItem = ({ subcategory }: SubcategoryItemProps) => {
+const SubcategoryItem = ({ subcategory, index }: SubcategoryItemProps) => {
   const router = useRouter();
   const [isEditing, setIsEditing] = useState(false);
   const [name, setName] = useState(subcategory.name);
@@ -142,6 +143,11 @@ const SubcategoryItem = ({ subcategory }: SubcategoryItemProps) => {
                   }
                 }}
               >
+                <div className="flex items-center gap-2 shrink-0">
+                  <span className="text-sm font-semibold text-muted-foreground min-w-[24px]">
+                    {index + 1}.
+                  </span>
+                </div>
                 <div className="flex-1 min-w-0">
                   <h3 className="text-base font-semibold group-hover/link:text-primary transition-colors duration-200 truncate mb-1.5">
                     {subcategory.name}
