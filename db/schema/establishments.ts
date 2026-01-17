@@ -7,7 +7,7 @@ export const establishments = pgTable("establishments", {
 	categoryId: integer("category_id").notNull(),
 	subcategoryId: integer("subcategory_id").notNull(),
 	name: varchar({ length: 255 }).notNull(),
-	edrpouCode: varchar("edrpou_code", { length: 100 }).notNull(),
+	edrpouCode: varchar("edrpou_code", { length: 20 }).notNull(),
 	createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
 	updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow(),
 }, (table) => [

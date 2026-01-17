@@ -6,7 +6,6 @@ import Link from "next/link";
 import SubcategoriesList from "./SubcategoriesList";
 import AddSubcategoryForm from "./AddSubcategoryForm";
 import { Badge } from "@/components/ui/badge";
-import { ThemeToggle } from "@/components/theme-toggle";
 import { ArrowLeft } from "lucide-react";
 import { Metadata } from "next";
 
@@ -80,7 +79,6 @@ const SubCategoryPage = async ({ params }: PageProps) => {
               </p>
             </div>
             <div className="flex items-center gap-2 flex-wrap">
-              <ThemeToggle />
               <Badge variant="secondary" className="px-3 py-1.5 text-xs font-semibold bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-950 dark:to-emerald-950 text-green-700 dark:text-green-300 border-green-200 dark:border-green-800 shadow-sm hover:shadow-md transition-shadow">
                 <span className="text-sm font-bold mr-1">{subcategoriesList.length}</span>
                 {subcategoriesList.length === 1 ? 'підкатегорія' : 'підкатегорій'}

@@ -4,7 +4,6 @@ import { sql, eq } from "drizzle-orm";
 import CategoriesList from "./CategoriesList";
 import AddCategoryForm from "./AddCategoryForm";
 import { Badge } from "@/components/ui/badge";
-import { ThemeToggle } from "@/components/theme-toggle";
 import { Metadata } from "next";
 
 export const metadata: Metadata = {
@@ -52,7 +51,6 @@ const CategoriesPage = async () => {
               </p>
             </div>
             <div className="flex items-center gap-2 flex-wrap">
-              <ThemeToggle />
               <Badge variant="secondary" className="px-3 py-1.5 text-xs font-semibold shadow-sm hover:shadow-md transition-shadow">
                 <span className="text-sm font-bold mr-1">{categoriesList.length}</span>
                 {categoriesList.length === 1 ? 'категорія' : 'категорій'}
