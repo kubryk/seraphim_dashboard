@@ -26,6 +26,20 @@ services:
       timeout: 10s
       retries: 3
       start_period: 40s
+    labels:
+      - "traefik.enable=true"
+      
+      # Router для всього домену (з Basic Auth)
+      # API ключ перевіряється в Next.js middleware
+      # Використовуємо змінну DASHBOARD_DOMAIN з .env файлу (через envsubst)
+      - "traefik.http.routers.seraphim-dashboard.rule=Host(`${DASHBOARD_DOMAIN}`)"
+      - "traefik.http.routers.seraphim-dashboard.entrypoints=websecure"
+      - "traefik.http.routers.seraphim-dashboard.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.seraphim-dashboard.service=seraphim-dashboard"
+      - "traefik.http.routers.seraphim-dashboard.middlewares=auth-basic"
+      
+      # Service
+      - "traefik.http.services.seraphim-dashboard.loadbalancer.server.port=3000"
     networks:
       - infra_net
 
@@ -33,3 +47,7 @@ networks:
   infra_net:
     external: true
     name: infra_net
+    # Якщо мережа ще не створена, спочатку запустіть інший docker-compose
+    # Або замініть на:
+    # driver: bridge
+    # (але тоді це буде окрема мережа, не підключена до іншого compose)
