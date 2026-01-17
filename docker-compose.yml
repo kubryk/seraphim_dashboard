@@ -1,0 +1,35 @@
+services:
+  # Next.js Application
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: seraphim-app
+    restart: unless-stopped
+    environment:
+      # Database - підключення до зовнішньої бази даних
+      # Можна використовувати або DATABASE_URL напряму, або окремі параметри
+      DATABASE_URL: ${DATABASE_URL}
+      
+      # API Keys
+      API_KEY: ${API_KEY}
+      NEXT_PUBLIC_API_KEY: ${NEXT_PUBLIC_API_KEY}
+      
+      # Next.js
+      NODE_ENV: production
+      PORT: 3000
+    ports:
+      - "${APP_PORT:-3000}:3000"
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - infra_net
+
+networks:
+  infra_net:
+    external: true
+    name: infra_net

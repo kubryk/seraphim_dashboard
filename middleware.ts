@@ -2,6 +2,11 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
 export function middleware(request: NextRequest) {
+  // Пропускаємо health check без перевірки API ключа
+  if (request.nextUrl.pathname === '/api/health') {
+    return NextResponse.next();
+  }
+  
   // Захищаємо тільки API routes
   if (request.nextUrl.pathname.startsWith('/api/')) {
     const apiKey = request.headers.get('x-api-key');
