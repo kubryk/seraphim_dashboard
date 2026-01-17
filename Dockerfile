@@ -15,6 +15,8 @@ COPY . .
 
 # Встановлюємо environment variables для build
 ENV NEXT_TELEMETRY_DISABLED=1
+# Dummy DATABASE_URL для білду (реальне значення буде в runtime)
+ENV DATABASE_URL=postgresql://dummy:dummy@dummy:5432/dummy
 
 # Білдимо додаток
 RUN npm run build
