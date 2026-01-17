@@ -11,6 +11,9 @@ export const metadata: Metadata = {
   description: "Управління категоріями сервісу СЕРАФІМ",
 }
 
+// Робимо сторінку динамічною, щоб уникнути помилок під час білду
+export const dynamic = 'force-dynamic';
+
 const CategoriesPage = async () => {
   const categoriesList = await db
     .select({

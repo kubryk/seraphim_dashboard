@@ -18,6 +18,9 @@ export const metadata: Metadata = {
   description: "Управління закладами сервісу СЕРАФІМ",
 }
 
+// Робимо сторінку динамічною, щоб уникнути помилок під час білду
+export const dynamic = 'force-dynamic';
+
 const EstablishmentsPage = async ({ params }: PageProps) => {
   const { id, subcategoryId } = await params;
   const categoryId = parseInt(id, 10);
