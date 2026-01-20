@@ -308,7 +308,7 @@ const UsersDashboard = () => {
               <DialogTrigger asChild>
                 <Button>Додати користувача</Button>
               </DialogTrigger>
-              <DialogContent>
+              <DialogContent className="max-w-[90vw] sm:max-w-md">
                 <DialogHeader>
                   <DialogTitle>Додати нового користувача</DialogTitle>
                   <DialogDescription>
@@ -399,40 +399,42 @@ const UsersDashboard = () => {
               Користувачів не знайдено
             </div>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b">
-                    <th className="text-left p-2">ID</th>
-                    <th className="text-left p-2">Telegram ID</th>
-                    <th className="text-left p-2">Username</th>
-                    <th className="text-left p-2">Роль</th>
-                    <th className="text-left p-2">Статус</th>
-                    <th className="text-left p-2">Остання взаємодія</th>
-                    <th className="text-left p-2">Дата створення</th>
-                    <th className="text-right p-2">Дії</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {users.map((user) => (
-                    <tr key={user.id} className="border-b hover:bg-muted/50">
-                      <td className="p-2 font-mono text-xs">{user.id}</td>
-                      <td className="p-2 font-mono text-xs">{user.telegramId}</td>
-                      <td className="p-2">{user.username || "—"}</td>
-                      <td className="p-2">
-                        <Badge variant={getRoleBadgeVariant(user.role)}>
-                          {user.role}
-                        </Badge>
-                      </td>
-                      <td className="p-2">
-                        <Badge variant={user.isActive ? "default" : "secondary"}>
-                          {user.isActive ? "Активний" : "Неактивний"}
-                        </Badge>
-                      </td>
-                      <td className="p-2 text-xs">{formatDate(user.lastInteraction)}</td>
-                      <td className="p-2 text-xs">{formatDate(user.createdAt)}</td>
-                      <td className="text-right p-2">
-                        <div className="flex items-center justify-end gap-2">
+            <>
+              {/* Desktop Table View */}
+              <div className="hidden md:block overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b">
+                      <th className="text-left p-2">ID</th>
+                      <th className="text-left p-2">Telegram ID</th>
+                      <th className="text-left p-2">Username</th>
+                      <th className="text-left p-2">Роль</th>
+                      <th className="text-left p-2">Статус</th>
+                      <th className="text-left p-2">Остання взаємодія</th>
+                      <th className="text-left p-2">Дата створення</th>
+                      <th className="text-right p-2">Дії</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {users.map((user) => (
+                      <tr key={user.id} className="border-b hover:bg-muted/50">
+                        <td className="p-2 font-mono text-xs">{user.id}</td>
+                        <td className="p-2 font-mono text-xs">{user.telegramId}</td>
+                        <td className="p-2">{user.username || "—"}</td>
+                        <td className="p-2">
+                          <Badge variant={getRoleBadgeVariant(user.role)}>
+                            {user.role}
+                          </Badge>
+                        </td>
+                        <td className="p-2">
+                          <Badge variant={user.isActive ? "default" : "secondary"}>
+                            {user.isActive ? "Активний" : "Неактивний"}
+                          </Badge>
+                        </td>
+                        <td className="p-2 text-xs">{formatDate(user.lastInteraction)}</td>
+                        <td className="p-2 text-xs">{formatDate(user.createdAt)}</td>
+                        <td className="text-right p-2">
+                          <div className="flex items-center justify-end gap-2">
                           <Dialog open={editingUser?.id === user.id} onOpenChange={(open) => !open && setEditingUser(null)}>
                             <DialogTrigger asChild>
                               <Button
@@ -550,13 +552,177 @@ const UsersDashboard = () => {
                             </div>
                           </DialogContent>
                         </Dialog>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Mobile Card View */}
+              <div className="md:hidden space-y-3">
+                {users.map((user) => (
+                  <Card key={user.id} className="hover:bg-muted/50 transition-colors">
+                    <CardContent className="p-4">
+                      <div className="flex items-start justify-between mb-3">
+                        <div className="flex-1">
+                          <div className="font-mono text-xs text-muted-foreground mb-1">ID: {user.id}</div>
+                          <div className="font-semibold">{user.username || `@${user.telegramId}`}</div>
+                          <div className="font-mono text-xs text-muted-foreground mt-1">
+                            Telegram ID: {user.telegramId}
+                          </div>
                         </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                        <div className="flex flex-col gap-2">
+                          <Badge variant={getRoleBadgeVariant(user.role)} className="text-xs">
+                            {user.role}
+                          </Badge>
+                          <Badge variant={user.isActive ? "default" : "secondary"} className="text-xs">
+                            {user.isActive ? "Активний" : "Неактивний"}
+                          </Badge>
+                        </div>
+                      </div>
+                      <div className="space-y-2 text-sm mb-3">
+                        <div>
+                          <div className="text-xs text-muted-foreground">Остання взаємодія</div>
+                          <div className="text-xs">{formatDate(user.lastInteraction)}</div>
+                        </div>
+                        <div>
+                          <div className="text-xs text-muted-foreground">Дата створення</div>
+                          <div className="text-xs">{formatDate(user.createdAt)}</div>
+                        </div>
+                      </div>
+                      <div className="flex gap-2 pt-2 border-t">
+                        <Dialog open={editingUser?.id === user.id} onOpenChange={(open) => !open && setEditingUser(null)}>
+                          <DialogTrigger asChild>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="flex-1"
+                              onClick={() => openEditDialog(user)}
+                            >
+                              Редагувати
+                            </Button>
+                          </DialogTrigger>
+                          <DialogContent className="max-w-[90vw] sm:max-w-md">
+                            <DialogHeader>
+                              <DialogTitle>Редагувати користувача</DialogTitle>
+                              <DialogDescription>
+                                Оновіть дані користувача
+                              </DialogDescription>
+                            </DialogHeader>
+                            <div className="space-y-4">
+                              <div>
+                                <label className="text-sm font-medium mb-2 block">Telegram ID</label>
+                                <Input
+                                  type="text"
+                                  value={formData.telegramId}
+                                  disabled
+                                  className="bg-muted"
+                                />
+                              </div>
+                              <div>
+                                <label className="text-sm font-medium mb-2 block">Username</label>
+                                <Input
+                                  type="text"
+                                  value={formData.username}
+                                  onChange={(e) => setFormData({ ...formData, username: e.target.value })}
+                                  placeholder="@username"
+                                />
+                              </div>
+                              <div>
+                                <label className="text-sm font-medium mb-2 block">Роль</label>
+                                <select
+                                  value={formData.role}
+                                  onChange={(e) => setFormData({ ...formData, role: e.target.value })}
+                                  className="w-full px-3 py-2 border rounded-md bg-background"
+                                >
+                                  <option value="user">Користувач</option>
+                                  <option value="admin">Адміністратор</option>
+                                  <option value="moderator">Модератор</option>
+                                </select>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <input
+                                  type="checkbox"
+                                  id={`edit-active-${user.id}`}
+                                  checked={formData.isActive}
+                                  onChange={(e) => setFormData({ ...formData, isActive: e.target.checked })}
+                                  className="w-4 h-4"
+                                />
+                                <label htmlFor={`edit-active-${user.id}`} className="text-sm">
+                                  Активний
+                                </label>
+                              </div>
+                              {error && (
+                                <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-800 dark:text-red-200 px-3 py-2 rounded-md text-sm">
+                                  {error}
+                                </div>
+                              )}
+                              <div className="flex justify-end gap-2">
+                                <Button
+                                  variant="outline"
+                                  onClick={() => {
+                                    setEditingUser(null);
+                                    setFormData({ telegramId: "", username: "", role: "user", isActive: true });
+                                  }}
+                                >
+                                  Скасувати
+                                </Button>
+                                <Button onClick={handleEditUser} disabled={saving}>
+                                  {saving ? "Збереження..." : "Зберегти"}
+                                </Button>
+                              </div>
+                            </div>
+                          </DialogContent>
+                        </Dialog>
+                        <Dialog open={deletingUser?.id === user.id} onOpenChange={(open) => !open && setDeletingUser(null)}>
+                          <DialogTrigger asChild>
+                            <Button
+                              variant="destructive"
+                              size="sm"
+                              className="flex-1"
+                              onClick={() => setDeletingUser(user)}
+                            >
+                              Видалити
+                            </Button>
+                          </DialogTrigger>
+                          <DialogContent className="max-w-[90vw] sm:max-w-md">
+                            <DialogHeader>
+                              <DialogTitle>Видалити користувача</DialogTitle>
+                              <DialogDescription>
+                                Ви впевнені, що хочете видалити користувача {user.username || `ID: ${user.telegramId}`}? Цю дію неможливо скасувати.
+                              </DialogDescription>
+                            </DialogHeader>
+                            {error && (
+                              <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-800 dark:text-red-200 px-3 py-2 rounded-md text-sm">
+                                {error}
+                              </div>
+                            )}
+                            <div className="flex justify-end gap-2">
+                              <Button
+                                variant="outline"
+                                onClick={() => setDeletingUser(null)}
+                                disabled={deleting}
+                              >
+                                Скасувати
+                              </Button>
+                              <Button
+                                variant="destructive"
+                                onClick={handleDeleteUser}
+                                disabled={deleting}
+                              >
+                                {deleting ? "Видалення..." : "Видалити"}
+                              </Button>
+                            </div>
+                          </DialogContent>
+                        </Dialog>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            </>
           )}
         </CardContent>
       </Card>

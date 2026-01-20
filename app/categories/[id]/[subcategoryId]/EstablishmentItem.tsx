@@ -239,7 +239,7 @@ const EstablishmentItem = ({ establishment, index }: EstablishmentItemProps) => 
       </Card>
 
       <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
-        <DialogContent>
+        <DialogContent className="max-w-[90vw] sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Видалити заклад?</DialogTitle>
             <DialogDescription>

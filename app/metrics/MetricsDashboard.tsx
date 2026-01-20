@@ -16,11 +16,6 @@ type MetricsData = {
     totalContracts: number;
     totalPages: number;
   };
-  topErrors: Array<{
-    errorMessage: string | null;
-    count: number;
-    statusCode: number | null;
-  }>;
 };
 
 type Execution = {
@@ -128,6 +123,13 @@ const MetricsDashboard = () => {
     fetchExecutions(currentPage);
   }, [currentPage, fetchExecutions]);
 
+  // Оновлюємо метрики після зміни сторінки executions
+  useEffect(() => {
+    if (!executionsLoading) {
+      fetchMetrics();
+    }
+  }, [executionsLoading, fetchMetrics]);
+
   const handlePageChange = (newPage: number) => {
     setCurrentPage(newPage);
   };
@@ -177,6 +179,16 @@ const MetricsDashboard = () => {
   return (
     <div className="space-y-6">
       {/* Загальна статистика */}
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-2 gap-2">
+        <h2 className="text-lg font-semibold">Загальна статистика</h2>
+        <button
+          onClick={() => fetchMetrics()}
+          disabled={loading}
+          className="px-3 py-1.5 text-sm border rounded-md hover:bg-muted disabled:opacity-50 disabled:cursor-not-allowed transition-colors w-full sm:w-auto"
+        >
+          {loading ? "Оновлення..." : "Оновити"}
+        </button>
+      </div>
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
         <Card className="p-3 text-center">
           <div className="text-xs text-muted-foreground mb-1">Всього запитів</div>
@@ -216,33 +228,6 @@ const MetricsDashboard = () => {
         </Card>
       </div>
 
-      {/* Топ помилок */}
-      {metrics.topErrors.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Топ помилок</CardTitle>
-            <CardDescription>Найчастіші помилки API</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-2">
-              {metrics.topErrors.map((error, index) => (
-                <div key={index} className="flex items-center justify-between p-3 border rounded-md">
-                  <div className="flex-1">
-                    <div className="font-medium">{error.errorMessage || "Unknown error"}</div>
-                    {error.statusCode && (
-                      <div className="text-sm text-muted-foreground">
-                        Status: {error.statusCode}
-                      </div>
-                    )}
-                  </div>
-                  <Badge variant="destructive">{error.count}</Badge>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
       {/* Executions */}
       <Card>
         <CardHeader>
@@ -255,38 +240,146 @@ const MetricsDashboard = () => {
           ) : executions.length === 0 ? (
             <div className="text-center py-4 text-muted-foreground">Немає executions</div>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b">
-                    <th className="text-left p-2">ID</th>
-                    <th className="text-left p-2">Дата</th>
-                    <th className="text-left p-2">Діапазон</th>
-                    <th className="text-right p-2">Статус</th>
-                    <th className="text-right p-2">Закладів</th>
-                    <th className="text-right p-2">Запитів</th>
-                    <th className="text-right p-2">Успішних</th>
-                    <th className="text-right p-2">Помилок</th>
-                    <th className="text-right p-2">Контрактів</th>
-                    <th className="text-right p-2">Оновлено</th>
-                    <th className="text-right p-2">Тривалість</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {executions.map((exec) => (
-                    <tr 
-                      key={exec.id} 
-                      className="border-b hover:bg-muted/50 cursor-pointer"
-                      onClick={() => router.push(`/metrics/executions/${exec.id}`)}
-                    >
-                      <td className="p-2 font-mono text-xs">{exec.id}</td>
-                      <td className="p-2 text-xs">
-                        {formatDate(exec.createdAt)}
-                      </td>
-                      <td className="p-2 text-xs">
-                        {exec.startDate} - {exec.endDate}
-                      </td>
-                      <td className="text-right p-2">
+            <>
+              {/* Desktop Table View */}
+              <div className="hidden md:block overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b">
+                      <th className="text-left p-2">ID</th>
+                      <th className="text-left p-2">Дата</th>
+                      <th className="text-left p-2">Діапазон</th>
+                      <th className="text-right p-2">Статус</th>
+                      <th className="text-right p-2">Закладів</th>
+                      <th className="text-right p-2">Запитів</th>
+                      <th className="text-right p-2">Успішних</th>
+                      <th className="text-right p-2">Помилок</th>
+                      <th className="text-right p-2">Контрактів</th>
+                      <th className="text-right p-2">Оновлено</th>
+                      <th className="text-right p-2">Тривалість</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {executions.map((exec) => (
+                      <tr 
+                        key={exec.id} 
+                        className="border-b hover:bg-muted/50 cursor-pointer"
+                        onClick={() => router.push(`/metrics/executions/${exec.id}`)}
+                      >
+                        <td className="p-2 font-mono text-xs">{exec.id}</td>
+                        <td className="p-2 text-xs">
+                          {formatDate(exec.createdAt)}
+                        </td>
+                        <td className="p-2 text-xs">
+                          {exec.startDate} - {exec.endDate}
+                        </td>
+                        <td className="text-right p-2">
+                          <Badge
+                            variant={
+                              exec.status === "success"
+                                ? "default"
+                                : exec.status === "partial_success"
+                                ? "secondary"
+                                : exec.status === "running"
+                                ? "secondary"
+                                : "destructive"
+                            }
+                          >
+                            {exec.status === "success"
+                              ? "Успішно"
+                              : exec.status === "partial_success"
+                              ? "Частково"
+                              : exec.status === "running"
+                              ? "Виконується..."
+                              : "Помилка"}
+                          </Badge>
+                        </td>
+                        <td className="text-right p-2">
+                          {exec.status === "running" ? (
+                            <div className="flex items-center justify-end gap-1">
+                              <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-current"></div>
+                            </div>
+                          ) : (
+                            exec.establishmentsProcessed
+                          )}
+                        </td>
+                        <td className="text-right p-2">
+                          {exec.status === "running" ? (
+                            <div className="flex items-center justify-end gap-1">
+                              <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-current"></div>
+                            </div>
+                          ) : (
+                            exec.totalRequests
+                          )}
+                        </td>
+                        <td className="text-right p-2 text-green-600 dark:text-green-400">
+                          {exec.status === "running" ? (
+                            <div className="flex items-center justify-end gap-1">
+                              <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-green-600"></div>
+                            </div>
+                          ) : (
+                            exec.successfulRequests
+                          )}
+                        </td>
+                        <td className="text-right p-2 text-red-600 dark:text-red-400">
+                          {exec.status === "running" ? (
+                            <div className="flex items-center justify-end gap-1">
+                              <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-red-600"></div>
+                            </div>
+                          ) : (
+                            exec.failedRequests
+                          )}
+                        </td>
+                        <td className="text-right p-2 font-semibold">
+                          {exec.status === "running" ? (
+                            <div className="flex items-center justify-end gap-1">
+                              <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-blue-600"></div>
+                            </div>
+                          ) : (
+                            exec.totalContractsCollected
+                          )}
+                        </td>
+                        <td className="text-right p-2">
+                          {exec.status === "running" ? (
+                            <div className="flex items-center justify-end gap-1">
+                              <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-current"></div>
+                            </div>
+                          ) : (
+                            exec.totalContractsUpdated
+                          )}
+                        </td>
+                        <td className="text-right p-2">
+                          {exec.status === "running" ? (
+                            <div className="flex items-center justify-end gap-1">
+                              <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-current"></div>
+                            </div>
+                          ) : (
+                            formatTime(exec.duration)
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Mobile Card View */}
+              <div className="md:hidden space-y-3">
+                {executions.map((exec) => (
+                  <Card
+                    key={exec.id}
+                    className="cursor-pointer hover:bg-muted/50 transition-colors"
+                    onClick={() => router.push(`/metrics/executions/${exec.id}`)}
+                  >
+                    <CardContent className="p-4">
+                      <div className="flex items-start justify-between mb-3">
+                        <div>
+                          <div className="font-mono text-xs text-muted-foreground mb-1">ID: {exec.id}</div>
+                          <div className="text-sm font-medium">{formatDate(exec.createdAt)}</div>
+                          <div className="text-xs text-muted-foreground mt-1">
+                            {exec.startDate} - {exec.endDate}
+                          </div>
+                        </div>
                         <Badge
                           variant={
                             exec.status === "success"
@@ -306,75 +399,86 @@ const MetricsDashboard = () => {
                             ? "Виконується..."
                             : "Помилка"}
                         </Badge>
-                      </td>
-                      <td className="text-right p-2">
-                        {exec.status === "running" ? (
-                          <div className="flex items-center justify-end gap-1">
-                            <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-current"></div>
+                      </div>
+                      <div className="grid grid-cols-2 gap-3 text-sm">
+                        <div>
+                          <div className="text-xs text-muted-foreground mb-1">Закладів</div>
+                          <div className="font-medium">
+                            {exec.status === "running" ? (
+                              <div className="flex items-center gap-1">
+                                <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-current"></div>
+                              </div>
+                            ) : (
+                              exec.establishmentsProcessed
+                            )}
                           </div>
-                        ) : (
-                          exec.establishmentsProcessed
-                        )}
-                      </td>
-                      <td className="text-right p-2">
-                        {exec.status === "running" ? (
-                          <div className="flex items-center justify-end gap-1">
-                            <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-current"></div>
+                        </div>
+                        <div>
+                          <div className="text-xs text-muted-foreground mb-1">Запитів</div>
+                          <div className="font-medium">
+                            {exec.status === "running" ? (
+                              <div className="flex items-center gap-1">
+                                <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-current"></div>
+                              </div>
+                            ) : (
+                              exec.totalRequests
+                            )}
                           </div>
-                        ) : (
-                          exec.totalRequests
-                        )}
-                      </td>
-                      <td className="text-right p-2 text-green-600 dark:text-green-400">
-                        {exec.status === "running" ? (
-                          <div className="flex items-center justify-end gap-1">
-                            <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-green-600"></div>
+                        </div>
+                        <div>
+                          <div className="text-xs text-muted-foreground mb-1">Успішних</div>
+                          <div className="font-medium text-green-600 dark:text-green-400">
+                            {exec.status === "running" ? (
+                              <div className="flex items-center gap-1">
+                                <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-green-600"></div>
+                              </div>
+                            ) : (
+                              exec.successfulRequests
+                            )}
                           </div>
-                        ) : (
-                          exec.successfulRequests
-                        )}
-                      </td>
-                      <td className="text-right p-2 text-red-600 dark:text-red-400">
-                        {exec.status === "running" ? (
-                          <div className="flex items-center justify-end gap-1">
-                            <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-red-600"></div>
+                        </div>
+                        <div>
+                          <div className="text-xs text-muted-foreground mb-1">Помилок</div>
+                          <div className="font-medium text-red-600 dark:text-red-400">
+                            {exec.status === "running" ? (
+                              <div className="flex items-center gap-1">
+                                <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-red-600"></div>
+                              </div>
+                            ) : (
+                              exec.failedRequests
+                            )}
                           </div>
-                        ) : (
-                          exec.failedRequests
-                        )}
-                      </td>
-                      <td className="text-right p-2 font-semibold">
-                        {exec.status === "running" ? (
-                          <div className="flex items-center justify-end gap-1">
-                            <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-blue-600"></div>
+                        </div>
+                        <div>
+                          <div className="text-xs text-muted-foreground mb-1">Контрактів</div>
+                          <div className="font-semibold">
+                            {exec.status === "running" ? (
+                              <div className="flex items-center gap-1">
+                                <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-blue-600"></div>
+                              </div>
+                            ) : (
+                              exec.totalContractsCollected
+                            )}
                           </div>
-                        ) : (
-                          exec.totalContractsCollected
-                        )}
-                      </td>
-                      <td className="text-right p-2">
-                        {exec.status === "running" ? (
-                          <div className="flex items-center justify-end gap-1">
-                            <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-current"></div>
+                        </div>
+                        <div>
+                          <div className="text-xs text-muted-foreground mb-1">Тривалість</div>
+                          <div className="font-medium">
+                            {exec.status === "running" ? (
+                              <div className="flex items-center gap-1">
+                                <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-current"></div>
+                              </div>
+                            ) : (
+                              formatTime(exec.duration)
+                            )}
                           </div>
-                        ) : (
-                          exec.totalContractsUpdated
-                        )}
-                      </td>
-                      <td className="text-right p-2">
-                        {exec.status === "running" ? (
-                          <div className="flex items-center justify-end gap-1">
-                            <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-current"></div>
-                          </div>
-                        ) : (
-                          formatTime(exec.duration)
-                        )}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            </>
           )}
 
           {/* Пагінація */}

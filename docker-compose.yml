@@ -1,53 +1,57 @@
 services:
-  # Next.js Application
+
   app:
     build:
       context: .
       dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_API_KEY: ${NEXT_PUBLIC_API_KEY}
     container_name: seraphim-app
     restart: unless-stopped
     environment:
-      # Database - підключення до зовнішньої бази даних
-      # Можна використовувати або DATABASE_URL напряму, або окремі параметри
       DATABASE_URL: ${DATABASE_URL}
-      
-      # API Keys
       API_KEY: ${API_KEY}
       NEXT_PUBLIC_API_KEY: ${NEXT_PUBLIC_API_KEY}
-      
-      # Next.js
       NODE_ENV: production
       PORT: 3000
-    ports:
-      - "${APP_PORT:-3000}:3000"
+    expose:
+      - "3000"        # ← тільки всередині Docker
     healthcheck:
       test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/api/health"]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 40s
-    labels:
-      - "traefik.enable=true"
-      
-      # Router для всього домену (з Basic Auth)
-      # API ключ перевіряється в Next.js middleware
-      # Використовуємо змінну DASHBOARD_DOMAIN з .env файлу (через envsubst)
-      - "traefik.http.routers.seraphim-dashboard.rule=Host(`${DASHBOARD_DOMAIN}`)"
-      - "traefik.http.routers.seraphim-dashboard.entrypoints=websecure"
-      - "traefik.http.routers.seraphim-dashboard.tls.certresolver=letsencrypt"
-      - "traefik.http.routers.seraphim-dashboard.service=seraphim-dashboard"
-      - "traefik.http.routers.seraphim-dashboard.middlewares=auth-basic"
-      
-      # Service
-      - "traefik.http.services.seraphim-dashboard.loadbalancer.server.port=3000"
     networks:
       - infra_net
+
+  nginx:
+    image: nginx:alpine
+    container_name: nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/.htpasswd:/etc/nginx/conf.d/.htpasswd:ro
+      - ./nginx:/etc/nginx/conf.d
+      - ./certbot/www:/var/www/certbot
+      - ./certbot/conf:/etc/letsencrypt
+    depends_on:
+      - app
+    networks:
+      - infra_net
+
+  certbot:
+    image: certbot/certbot
+    volumes:
+      - ./certbot/www:/var/www/certbot
+      - ./certbot/conf:/etc/letsencrypt
 
 networks:
   infra_net:
     external: true
     name: infra_net
-    # Якщо мережа ще не створена, спочатку запустіть інший docker-compose
-    # Або замініть на:
-    # driver: bridge
-    # (але тоді це буде окрема мережа, не підключена до іншого compose)
+
+
+

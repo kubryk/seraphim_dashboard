@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { db } from "@/db";
-import { apiRequestsLog } from "@/db/schema";
-import { sql, eq, and, gte, lte, desc } from "drizzle-orm";
+import { apiRequestsLog, contractCollectionExecutions } from "@/db/schema";
+import { sql, eq, and, gte, lte, desc, inArray, isNotNull } from "drizzle-orm";
 
 const validateDate = (dateStr: string): boolean => {
   const regex = /^\d{4}-\d{2}-\d{2}$/;
@@ -57,7 +57,28 @@ export const GET = async (request: Request) => {
 
     const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
 
-    // Загальна статистика
+    // Отримуємо список існуючих execution IDs
+    const existingExecutions = await db
+      .select({ id: contractCollectionExecutions.id })
+      .from(contractCollectionExecutions);
+
+    const executionIds = existingExecutions.map((e) => e.id);
+
+    // Додаємо умову фільтрації по існуючим executions
+    // Враховуємо тільки записи з executionId, які існують в таблиці executions
+    const finalConditions = [...(conditions || [])];
+    if (executionIds.length > 0) {
+      // Фільтруємо тільки записи з існуючими executionId (не null і в списку)
+      finalConditions.push(isNotNull(apiRequestsLog.executionId));
+      finalConditions.push(inArray(apiRequestsLog.executionId, executionIds));
+    } else {
+      // Якщо немає executions, повертаємо нульові метрики
+      finalConditions.push(sql`1 = 0`); // Неможлива умова
+    }
+
+    const finalWhereClause = finalConditions.length > 0 ? and(...finalConditions) : undefined;
+
+    // Загальна статистика (тільки по існуючим executions)
     const totalStats = await db
       .select({
         totalRequests: sql<number>`count(*)`.as("total_requests"),
@@ -68,9 +89,10 @@ export const GET = async (request: Request) => {
         totalPages: sql<number>`sum(${apiRequestsLog.totalPages})`.as("total_pages"),
       })
       .from(apiRequestsLog)
-      .where(whereClause);
+      .where(finalWhereClause);
 
-    // Топ помилок
+    // Топ помилок (тільки по існуючим executions)
+    const errorConditions = [...finalConditions, eq(apiRequestsLog.success, false)];
     const topErrors = await db
       .select({
         errorMessage: apiRequestsLog.errorMessage,
@@ -78,7 +100,7 @@ export const GET = async (request: Request) => {
         statusCode: apiRequestsLog.statusCode,
       })
       .from(apiRequestsLog)
-      .where(and(...(whereClause ? [whereClause] : []), eq(apiRequestsLog.success, false)))
+      .where(and(...errorConditions))
       .groupBy(apiRequestsLog.errorMessage, apiRequestsLog.statusCode)
       .orderBy(desc(sql<number>`count(*)`))
       .limit(10);
