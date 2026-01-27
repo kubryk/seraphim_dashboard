@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { apiRequest } from "@/lib/api-client";
+import { RefreshCw, Pause, Play, CheckCircle2, XCircle, Clock } from "lucide-react";
 
 type Setting = {
   id: number;
@@ -19,6 +20,14 @@ type SettingsData = {
   [key: string]: Setting | undefined;
 };
 
+type SyncStatus = {
+  lastSyncDate: string | null;
+  lastOffset: string | null;
+  contractsCount: number;
+  status: string;
+  syncPaused: boolean;
+};
+
 const SettingsDashboard = () => {
   const [settings, setSettings] = useState<SettingsData>({});
   const [loading, setLoading] = useState(true);
@@ -27,7 +36,9 @@ const SettingsDashboard = () => {
   const [localValues, setLocalValues] = useState<Record<string, string>>({});
   const [displayValues, setDisplayValues] = useState<Record<string, string>>({});
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
-  const [savingAllScoring, setSavingAllScoring] = useState(false);
+  const [syncStatus, setSyncStatus] = useState<SyncStatus | null>(null);
+  const [syncStatusLoading, setSyncStatusLoading] = useState(false);
+  const [syncStatusError, setSyncStatusError] = useState<string | null>(null);
 
   const fetchSettings = useCallback(async () => {
     setLoading(true);
@@ -57,9 +68,38 @@ const SettingsDashboard = () => {
     }
   }, []);
 
+  const fetchSyncStatus = useCallback(async () => {
+    setSyncStatusLoading(true);
+    setSyncStatusError(null);
+    try {
+      const response = await apiRequest("/api/sync/status");
+      const data = await response.json();
+
+      if (data.success) {
+        setSyncStatus(data.data);
+      } else {
+        setSyncStatusError(data.error || "Failed to fetch sync status");
+      }
+    } catch (err) {
+      setSyncStatusError(err instanceof Error ? err.message : "Unknown error");
+    } finally {
+      setSyncStatusLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
     fetchSettings();
-  }, [fetchSettings]);
+    fetchSyncStatus();
+  }, [fetchSettings, fetchSyncStatus]);
+
+  // Автоматичне оновлення статусу синхронізації кожні 30 секунд
+  useEffect(() => {
+    const interval = setInterval(() => {
+      fetchSyncStatus();
+    }, 30000);
+
+    return () => clearInterval(interval);
+  }, [fetchSyncStatus]);
 
   const handleSave = async (key: string) => {
     setSaving((prev) => ({ ...prev, [key]: true }));
@@ -92,55 +132,6 @@ const SettingsDashboard = () => {
     }
   };
 
-  const handleSaveAllScoring = async () => {
-    setSavingAllScoring(true);
-    setError(null);
-    setSuccessMessage(null);
-    
-    try {
-      const scoringKeys = settingKeys.filter((key) => key.startsWith("scoring_"));
-      const changedKeys = scoringKeys.filter((key) => {
-        const setting = settings[key];
-        if (!setting) return false;
-        const storedValue = localValues[key] || setting.value;
-        return storedValue !== setting.value;
-      });
-
-      if (changedKeys.length === 0) {
-        setError("Немає змін для збереження");
-        setSavingAllScoring(false);
-        return;
-      }
-
-      // Зберігаємо всі змінені налаштування послідовно
-      const savePromises = changedKeys.map(async (key) => {
-        const response = await apiRequest("/api/settings", {
-          method: "PUT",
-          body: JSON.stringify({
-            key,
-            value: localValues[key],
-          }),
-        });
-        return response.json();
-      });
-
-      const results = await Promise.all(savePromises);
-      const failedResults = results.filter((result) => !result.success);
-
-      if (failedResults.length > 0) {
-        setError(`Не вдалося зберегти деякі налаштування: ${failedResults.map((r) => r.error).join(", ")}`);
-      } else {
-        setSuccessMessage(`Успішно збережено ${changedKeys.length} налаштування(нь)`);
-        await fetchSettings();
-        setTimeout(() => setSuccessMessage(null), 3000);
-      }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Unknown error");
-    } finally {
-      setSavingAllScoring(false);
-    }
-  };
-
   const handleValueChange = (key: string, value: string) => {
     setDisplayValues((prev) => ({ ...prev, [key]: value }));
     setLocalValues((prev) => ({ ...prev, [key]: value }));
@@ -154,20 +145,6 @@ const SettingsDashboard = () => {
         setDisplayValues((prev) => ({ ...prev, [key]: numericValue.toLocaleString("uk-UA", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }));
       }
     }
-    // Для scoring налаштувань - не форматуємо, залишаємо як є (з крапкою)
-    if (key.startsWith("scoring_") && localValues[key]) {
-      // Просто замінюємо кому на крапку, якщо вона є, і залишаємо значення як є
-      const value = localValues[key].replace(",", ".");
-      // Перевіряємо, чи це валідне число, і якщо так - форматуємо до 2 знаків після крапки
-      const numericValue = parseFloat(value);
-      if (!isNaN(numericValue)) {
-        // Використовуємо toFixed(2) який завжди повертає крапку
-        const formatted = numericValue.toFixed(2);
-        setDisplayValues((prev) => ({ ...prev, [key]: formatted }));
-        // Також оновлюємо localValues, щоб зберегти значення з крапкою
-        setLocalValues((prev) => ({ ...prev, [key]: formatted }));
-      }
-    }
   };
 
   const handleFocus = (key: string) => {
@@ -177,11 +154,6 @@ const SettingsDashboard = () => {
       if (!isNaN(numericValue)) {
         setDisplayValues((prev) => ({ ...prev, [key]: numericValue.toString() }));
       }
-    }
-    // Для scoring налаштувань - показуємо значення без форматування, замінюємо кому на крапку
-    if (key.startsWith("scoring_") && localValues[key]) {
-      const value = localValues[key].replace(",", ".");
-      setDisplayValues((prev) => ({ ...prev, [key]: value }));
     }
   };
 
@@ -222,6 +194,56 @@ const SettingsDashboard = () => {
     );
   }
 
+  const formatDate = (dateString: string | null): string => {
+    if (!dateString) return "—";
+    try {
+      const date = new Date(dateString);
+      return date.toLocaleString("uk-UA", {
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
+      });
+    } catch {
+      return dateString;
+    }
+  };
+
+  const getStatusBadge = (status: string) => {
+    switch (status.toLowerCase()) {
+      case "success":
+        return (
+          <Badge variant="default" className="bg-green-600 hover:bg-green-700">
+            <CheckCircle2 className="w-3 h-3 mr-1" />
+            Успішно
+          </Badge>
+        );
+      case "error":
+      case "failed":
+        return (
+          <Badge variant="destructive">
+            <XCircle className="w-3 h-3 mr-1" />
+            Помилка
+          </Badge>
+        );
+      case "running":
+        return (
+          <Badge variant="default" className="bg-blue-600 hover:bg-blue-700">
+            <Clock className="w-3 h-3 mr-1" />
+            В процесі
+          </Badge>
+        );
+      default:
+        return (
+          <Badge variant="outline">
+            {status}
+          </Badge>
+        );
+    }
+  };
+
   return (
     <div className="space-y-6">
       {successMessage && (
@@ -236,100 +258,79 @@ const SettingsDashboard = () => {
         </div>
       )}
 
-      {/* Правила автоматичної оцінки ризику */}
-      {settingKeys.some((key) => key.startsWith("scoring_")) && (() => {
-        const scoringKeys = settingKeys.filter((key) => key.startsWith("scoring_"));
-        const hasAnyChanges = scoringKeys.some((key) => {
-          const setting = settings[key];
-          if (!setting) return false;
-          const storedValue = localValues[key] || setting.value;
-          return storedValue !== setting.value;
-        });
-
-        return (
-          <Card>
-            <CardHeader>
-              <CardTitle>Правила автоматичної оцінки ризику</CardTitle>
+      {/* Статус синхронізації */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle>Збирання контрактів з Prozorro</CardTitle>
               <CardDescription>
-                Налаштування порогів для скорингу контрактів
+                Всі нові контракти збираються кожну хвилину автоматично.
               </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {scoringKeys.map((key, index) => {
-                const setting = settings[key];
-                if (!setting) return null;
-
-                const storedValue = localValues[key] || setting.value;
-                const displayValue = displayValues[key] !== undefined
-                  ? displayValues[key]
-                  : storedValue;
-
-                const isLast = index === scoringKeys.length - 1;
-                
-                // Визначаємо колір та тип порогу
-                const isYellow = key.includes('yellow');
-                const isRed = key.includes('red');
-                const borderColor = isYellow 
-                  ? 'border-l-yellow-500 dark:border-l-yellow-400' 
-                  : isRed 
-                  ? 'border-l-red-500 dark:border-l-red-400' 
-                  : 'border-l-gray-300 dark:border-l-gray-600';
-                const badgeVariant = isYellow ? 'outline' : isRed ? 'destructive' : 'default';
-                const badgeText = isYellow ? 'Yellow' : isRed ? 'Red' : '';
-                const badgeClassName = isYellow 
-                  ? 'border-yellow-500 text-yellow-700 dark:border-yellow-400 dark:text-yellow-300 bg-yellow-50 dark:bg-yellow-950/30' 
-                  : '';
-
-                return (
-                  <div 
-                    key={key} 
-                    className={`pb-4 pl-4 border-l-4 ${borderColor} ${!isLast ? 'border-b border-b-border mb-4' : ''}`}
-                  >
-                    <div className="flex-1 w-full">
-                      {setting.description && (
-                        <div className="flex items-center gap-2 mb-2">
-                          <label className="text-sm font-medium">
-                            {setting.description}
-                          </label>
-                          {badgeText && (
-                            <Badge variant={badgeVariant} className={`text-xs ${badgeClassName}`}>
-                              {badgeText}
-                            </Badge>
-                          )}
-                        </div>
-                      )}
-                      <Input
-                        type="number"
-                        value={displayValue}
-                        onChange={(e) => handleValueChange(key, e.target.value)}
-                        onFocus={() => handleFocus(key)}
-                        onBlur={() => handleBlur(key)}
-                        placeholder="Введіть значення"
-                        className="w-full"
-                        step="0.01"
-                        min="0"
-                      />
-                    </div>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={fetchSyncStatus}
+              disabled={syncStatusLoading}
+              className="flex items-center gap-2"
+            >
+              <RefreshCw className={`w-4 h-4 ${syncStatusLoading ? "animate-spin" : ""}`} />
+              Оновити
+            </Button>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {syncStatusLoading && !syncStatus ? (
+            <div className="flex items-center justify-center py-8">
+              <div className="text-muted-foreground">Завантаження статусу...</div>
+            </div>
+          ) : syncStatusError ? (
+            <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-800 dark:text-red-200 px-4 py-3 rounded-md">
+              Помилка: {syncStatusError}
+            </div>
+          ) : syncStatus ? (
+            <div className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <div className="text-sm font-medium text-muted-foreground">Статус</div>
+                  <div className="flex items-center gap-2">
+                    {getStatusBadge(syncStatus.status)}
+                    {syncStatus.syncPaused && (
+                      <Badge variant="outline" className="border-yellow-500 text-yellow-700 dark:border-yellow-400 dark:text-yellow-300">
+                        <Pause className="w-3 h-3 mr-1" />
+                        Призупинено
+                      </Badge>
+                    )}
                   </div>
-                );
-              })}
-              <div className="pt-4 flex justify-center">
-                <Button
-                  onClick={handleSaveAllScoring}
-                  disabled={!hasAnyChanges || savingAllScoring}
-                  className="w-full sm:w-auto"
-                >
-                  {savingAllScoring ? "Збереження..." : "Зберегти всі зміни"}
-                </Button>
+                </div>
+                <div className="space-y-2">
+                  <div className="text-sm font-medium text-muted-foreground">Кількість контрактів</div>
+                  <div className="text-lg font-semibold">{syncStatus.contractsCount.toLocaleString("uk-UA")}</div>
+                </div>
               </div>
-            </CardContent>
-          </Card>
-        );
-      })()}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <div className="text-sm font-medium text-muted-foreground">Остання синхронізація</div>
+                  <div className="text-sm">{formatDate(syncStatus.lastSyncDate)}</div>
+                </div>
+                <div className="space-y-2">
+                  <div className="text-sm font-medium text-muted-foreground">Останній offset</div>
+                  <div className="font-mono text-xs break-all">{syncStatus.lastOffset || "—"}</div>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="flex items-center justify-center py-8">
+              <div className="text-muted-foreground">Немає даних про статус</div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Інші налаштування */}
       {settingKeys
-        .filter((key) => !key.startsWith("scoring_"))
+        .filter((key) => !key.startsWith("scoring_") && !key.toLowerCase().includes("prompt"))
         .map((key) => {
         const setting = settings[key];
         if (!setting) return null;
@@ -355,7 +356,7 @@ const SettingsDashboard = () => {
                     </label>
                   )}
                   <Input
-                    type={key === "telegram_threshold" || key.startsWith("scoring_") ? "number" : "text"}
+                    type={key === "telegram_threshold" ? "number" : "text"}
                     value={displayValue}
                     onChange={(e) => {
                       handleValueChange(key, e.target.value);
@@ -364,8 +365,8 @@ const SettingsDashboard = () => {
                     onBlur={() => handleBlur(key)}
                     placeholder="Введіть значення"
                     className="w-full"
-                    step={key === "telegram_threshold" || key.startsWith("scoring_") ? "0.01" : undefined}
-                    min={key === "telegram_threshold" || key.startsWith("scoring_") ? "0" : undefined}
+                    step={key === "telegram_threshold" ? "0.01" : undefined}
+                    min={key === "telegram_threshold" ? "0" : undefined}
                   />
                 </div>
                 <Button

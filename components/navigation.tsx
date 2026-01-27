@@ -4,7 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
-import { LayoutDashboard, Settings, BarChart3, Users, Menu, X } from "lucide-react";
+import { LayoutDashboard, Settings, Users, Menu, X } from "lucide-react";
 import { ThemeToggle } from "@/components/theme-toggle";
 
 const navigationItems = [
@@ -12,11 +12,6 @@ const navigationItems = [
     name: "Категорії",
     href: "/categories",
     icon: LayoutDashboard,
-  },
-  {
-    name: "Метрики",
-    href: "/metrics",
-    icon: BarChart3,
   },
   {
     name: "Користувачі",

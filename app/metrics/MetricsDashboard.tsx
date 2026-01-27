@@ -47,6 +47,7 @@ const MetricsDashboard = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [totalExecutions, setTotalExecutions] = useState(0);
   const executionsPerPage = 10;
+  const [triggeringN8n, setTriggeringN8n] = useState(false);
 
   const fetchMetrics = useCallback(async () => {
     setLoading(true);
@@ -134,6 +135,34 @@ const MetricsDashboard = () => {
     setCurrentPage(newPage);
   };
 
+  const handleTriggerN8n = useCallback(async () => {
+    setTriggeringN8n(true);
+    try {
+      const response = await apiRequest("/api/n8n/trigger", {
+        method: "POST",
+        body: JSON.stringify({}),
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        // Оновлюємо метрики після успішного запуску
+        setTimeout(() => {
+          fetchMetrics();
+          fetchExecutions(currentPage);
+        }, 2000);
+        alert("✅ Збір договорів запущено через n8n");
+      } else {
+        alert(`❌ Помилка: ${data.error || "Невідома помилка"}`);
+      }
+    } catch (err) {
+      console.error("Error triggering n8n:", err);
+      alert(`❌ Помилка: ${err instanceof Error ? err.message : "Невідома помилка"}`);
+    } finally {
+      setTriggeringN8n(false);
+    }
+  }, [fetchMetrics, fetchExecutions, currentPage]);
+
   const totalPages = Math.ceil(totalExecutions / executionsPerPage);
 
   const formatDate = (dateStr: string) => {
@@ -181,13 +210,29 @@ const MetricsDashboard = () => {
       {/* Загальна статистика */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-2 gap-2">
         <h2 className="text-lg font-semibold">Загальна статистика</h2>
-        <button
-          onClick={() => fetchMetrics()}
-          disabled={loading}
-          className="px-3 py-1.5 text-sm border rounded-md hover:bg-muted disabled:opacity-50 disabled:cursor-not-allowed transition-colors w-full sm:w-auto"
-        >
-          {loading ? "Оновлення..." : "Оновити"}
-        </button>
+        <div className="flex gap-2 w-full sm:w-auto">
+          <button
+            onClick={handleTriggerN8n}
+            disabled={triggeringN8n}
+            className="px-3 py-1.5 text-sm bg-primary text-primary-foreground rounded-md hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
+          >
+            {triggeringN8n ? (
+              <>
+                <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-current"></div>
+                <span>Запуск...</span>
+              </>
+            ) : (
+              "🚀 Запустити збір"
+            )}
+          </button>
+          <button
+            onClick={() => fetchMetrics()}
+            disabled={loading}
+            className="px-3 py-1.5 text-sm border rounded-md hover:bg-muted disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          >
+            {loading ? "Оновлення..." : "Оновити"}
+          </button>
+        </div>
       </div>
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
         <Card className="p-3 text-center">
